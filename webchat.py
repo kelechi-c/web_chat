@@ -9,13 +9,17 @@ from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from dotenv import load_dotenv
-import os 
-import streamlit as st # type: ignore
+import os
+import streamlit as st  # type: ignore
 
 load_dotenv()
 
 st.set_page_config(page_title="Web Chat", page_icon=":rocket:")
-st.title('WebChat')
+st.title("WebChat")
+
+with st.sidebar:
+    st.header("Description")
+    st.write("**Webchat** is a **RAG/AI** application that allows you to ask questions and get answers from a website.")
 
 
 base_llm = ChatAnthropic(
@@ -55,21 +59,28 @@ def load_website_data(url):
     return retriever
 
 
-# loader = WebBaseLoader("https://www.anthropic.com/claude")
-input_url = st.text_input("URL: ")
-
-
 # retriever = load_website_data('https://www.anthropic.com/claude')
 # retriever = load_website_data("https://en.wikipedia.org/wiki/Perplexity.ai")
-retriever = load_website_data(input_url)
+# loader = WebBaseLoader("https://www.anthropic.com/claude")
 
-retrieval_chain = create_retrieval_chain(retriever, document_chain)
+try:
+    input_url = st.text_input("URL: ")
+    # if st.button('Get site data'):
+    with st.spinner("Getting site data"):
+        retriever = load_website_data(input_url)
+        st.success(f"Successfully retrieved data from {input_url}")
 
-# query = "What are the main infromations on the site?"
-query = st.text_input(label="Ask question")
+    retrieval_chain = create_retrieval_chain(retriever, document_chain)
 
-if st.button('Ask question'):
-    with st.spinner('Generating Answers'):
-        result = retrieval_chain.invoke({"input": query})
     
-    st.write(result["answer"])
+    query = st.text_input(label="Ask question")
+
+    if st.button("Ask question"):
+        with st.spinner("Generating Answers"):
+            result = retrieval_chain.invoke({"input": query})
+       
+            message = st.chat_message('assistant')
+            message.write(result["answer"])
+
+except Exception as e:
+    st.error(f"{e} Please enter a valid URL")
