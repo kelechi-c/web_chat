@@ -1,12 +1,10 @@
 from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.document_loaders import WebBaseLoader
-from langchain_community.vectorstores import FAISS, Chroma
+from langchain_community.vectorstores import FAISS
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain.memory import ConversationBufferMemory
-from langchain.chains import ConversationalRetrievalChain, create_retrieval_chain
+from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from dotenv import load_dotenv
 import os
@@ -20,6 +18,18 @@ st.title("WebChat")
 with st.sidebar:
     st.header("Description")
     st.write("**Webchat** is a **RAG/AI** application that allows you to ask questions and get answers from a website.")
+    st.write('')
+    st.write("")
+    st.write("")
+    st.write("")
+
+    st.markdown("""
+        <div style="text-align: center; padding: 1rem;">
+            Project by <a href="https://github.com/ChibuzoKelechi" target="_blank" style="color: white; font-weight: bold; text-decoration: none;">
+            kelechi_tensor</a>
+        </div>
+    """,
+    unsafe_allow_html=True,)
 
 
 base_llm = ChatAnthropic(
@@ -42,9 +52,7 @@ prompt = ChatPromptTemplate.from_template(
 
 document_chain = create_stuff_documents_chain(base_llm, prompt)
 
-embeddings = GoogleGenerativeAIEmbeddings(
-    model="models/embedding-001", google_api_key=os.getenv("GOOGLE_API_KEY")
-)
+embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=os.getenv("GOOGLE_API_KEY"))
 
 text_splitter = RecursiveCharacterTextSplitter()
 
@@ -63,24 +71,31 @@ def load_website_data(url):
 # retriever = load_website_data("https://en.wikipedia.org/wiki/Perplexity.ai")
 # loader = WebBaseLoader("https://www.anthropic.com/claude")
 
+
 try:
     input_url = st.text_input("URL: ")
-    # if st.button('Get site data'):
-    with st.spinner("Getting site data"):
-        retriever = load_website_data(input_url)
-        st.success(f"Successfully retrieved data from {input_url}")
+    retriever = load_website_data(input_url)
+    st.success(f"Successfully retrieved data from {input_url}")
 
-    retrieval_chain = create_retrieval_chain(retriever, document_chain)
+    # retrieval_chain = create_retrieval_chain(retriever, document_chain)
 
-    
-    query = st.text_input(label="Ask question")
+    query = st.text_input("Ask question")
 
     if st.button("Ask question"):
-        with st.spinner("Generating Answers"):
+        with st.status("Running...", expanded=True) as status:
+            st.write("Creating retrieval chain..")
+            retrieval_chain = create_retrieval_chain(retriever, document_chain)
+            st.write("Fetching website data...")
+            retriever = load_website_data("https://en.wikipedia.org/wiki/Perplexity.ai")
+            st.write("Generating Answers..")
             result = retrieval_chain.invoke({"input": query})
-       
-            message = st.chat_message('assistant')
-            message.write(result["answer"])
+
+            status.update(label="Retrieval complete!", state="complete", expanded=False)
+
+        # with st.spinner("Generating Answers"):
+
+        message = st.chat_message('assistant')
+        message.write(result["answer"])
 
 except Exception as e:
-    st.error(f"{e} Please enter a valid URL")
+    st.error(f"{e}")
